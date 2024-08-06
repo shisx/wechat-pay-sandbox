@@ -1,0 +1,26 @@
+# Web Server 配置
+server:
+  port: 8881
+  http2.enabled: true
+  ssl.enabled: false
+
+spring:
+  application:
+    name: wechat.pay.sandbox # 应用名称
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: GMT+8
+  task.scheduling.pool.size: 2
+  servlet:
+    multipart:
+      max-file-size: 200MB
+      max-request-size: 200MB
+
+wechat.pay:
+  app-id: your appId
+  mch-id: your mchId
+  mch-key: your mchKey
+  key-path: the key file path
+  notify-url: notifyUrl
+  refund-notify-url: refundNotifyUrl
+  contract-notify-url: contractNotifyUrl
