@@ -4,7 +4,8 @@ import com.github.binarywang.wxpay.bean.notify.WxPayOrderNotifyResult;
 import com.github.binarywang.wxpay.bean.request.*;
 import com.github.binarywang.wxpay.bean.result.*;
 import com.ssx.sandbox.wechat.conf.WechatPayProperties;
-import com.ssx.sandbox.wechat.db.MemoryDB;
+import com.ssx.sandbox.wechat.data.MemoryDB;
+import com.ssx.sandbox.wechat.data.Tables;
 import com.ssx.sandbox.wechat.util.DateUtils;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -25,6 +26,8 @@ public class PayController extends BaseController {
 
     @Resource
     private WechatPayProperties wechatPayProperties;
+    @Resource
+    private MemoryDB memoryDB;
 
     /**
      * 统一支付
@@ -36,7 +39,7 @@ public class PayController extends BaseController {
     public String unifiedOrder(@RequestBody String xml) {
         WxPayUnifiedOrderRequest request = fromXml(xml, WxPayUnifiedOrderRequest.class);
 
-        MemoryDB.Tables tables = MemoryDB.get(request.getOutTradeNo());
+        Tables tables = memoryDB.get(request.getOutTradeNo());
         if (tables != null && tables.getWxPayUnifiedOrderRequest() != null) {
             WxPayUnifiedOrderResult result = failResult(WxPayUnifiedOrderResult.class, "REPEAT_OUT_TRADE_NO", "重复的商户订单号");
             copyProperties(request, result);
@@ -59,9 +62,9 @@ public class PayController extends BaseController {
         notifyResult.setOpenid(randomOpenId());
         delayRequest(notifyResult, request.getNotifyUrl(), 5, TimeUnit.SECONDS);
 
-        MemoryDB.put(request);
-        MemoryDB.put(request.getOutTradeNo(), result);
-        MemoryDB.put(notifyResult);
+        memoryDB.put(request);
+        memoryDB.put(request.getOutTradeNo(), result);
+        memoryDB.put(notifyResult);
 
         return signAndToXml(result);
     }
@@ -76,7 +79,7 @@ public class PayController extends BaseController {
     public String payContractOrder(@RequestBody String xml) {
         WxPayEntrustRequest request = fromXml(xml, WxPayEntrustRequest.class);
 
-        MemoryDB.Tables tables = MemoryDB.get(request.getContractCode(), request.getOutTradeNo());
+        Tables tables = memoryDB.get(request.getContractCode(), request.getOutTradeNo());
         if (tables.getWxSignStatusNotifyResult() != null) {
             WxPayEntrustResult result = failResult(WxPayEntrustResult.class, "HAS_ENTRUST_REQUEST", "签约记录已经存在，请勿重复请求");
             return signAndToXml(result);
@@ -110,10 +113,10 @@ public class PayController extends BaseController {
         notifyResult.setContractId(randomString(16));
         delayRequest(notifyResult, request.getContractNotifyUrl(), 10, TimeUnit.SECONDS);
 
-        MemoryDB.put(request);
-        MemoryDB.put(result);
-        MemoryDB.put(orderResult);
-        MemoryDB.put(notifyResult);
+        memoryDB.put(request);
+        memoryDB.put(result);
+        memoryDB.put(orderResult);
+        memoryDB.put(notifyResult);
 
         return signAndToXml(result);
     }
@@ -128,7 +131,7 @@ public class PayController extends BaseController {
     public String payOrderQuery(@RequestBody String xml) {
         WxPayOrderQueryRequest request = fromXml(xml, WxPayOrderQueryRequest.class);
 
-        WxPayOrderNotifyResult notifyResult = MemoryDB.get(request.getOutTradeNo(), request.getTransactionId()).getWxPayOrderNotifyResult();
+        WxPayOrderNotifyResult notifyResult = memoryDB.get(request.getOutTradeNo(), request.getTransactionId()).getWxPayOrderNotifyResult();
 
         WxPayOrderQueryResult result;
         if (notifyResult != null) {
@@ -154,7 +157,7 @@ public class PayController extends BaseController {
     public String contractsNotify(@PathVariable String contractId, @RequestBody String json) {
         WxPreWithholdRequest request = fromJson(json, WxPreWithholdRequest.class);
 
-        MemoryDB.Tables tables = MemoryDB.get(contractId);
+        Tables tables = memoryDB.get(contractId);
         if (tables.getWxPayEntrustResult() == null) {
             WxWithholdResult result = failResult(WxWithholdResult.class, "NO_ENTRUST_ORDER", "没有找到签约记录");
             return signAndToXml(result);
@@ -169,7 +172,7 @@ public class PayController extends BaseController {
         }
 
         request.setContractId(contractId);
-        MemoryDB.put(request);
+        memoryDB.put(request);
         return "{}";
     }
 
@@ -183,7 +186,7 @@ public class PayController extends BaseController {
     public String papPayApply(@RequestBody String xml) {
         WxWithholdRequest request = fromXml(xml, WxWithholdRequest.class);
 
-        MemoryDB.Tables tables = MemoryDB.get(request.getContractId());
+        Tables tables = memoryDB.get(request.getContractId());
         if (tables == null || tables.getWxPayEntrustResult() == null) {
             WxWithholdResult result = failResult(WxWithholdResult.class, "NO_ENTRUST_ORDER", "没有找到签约记录");
             return signAndToXml(result);
@@ -221,8 +224,8 @@ public class PayController extends BaseController {
         notifyResult.setTimeEnd(now());
         delayRequest(notifyResult, request.getNotifyUrl(), 10, TimeUnit.SECONDS);
 
-        MemoryDB.put(request);
-        MemoryDB.put(notifyResult);
+        memoryDB.put(request);
+        memoryDB.put(notifyResult);
 
         return signAndToXml(result);
     }
@@ -237,7 +240,7 @@ public class PayController extends BaseController {
     public String queryContract(@RequestBody String xml) {
         WxSignQueryRequest request = fromXml(xml, WxSignQueryRequest.class);
 
-        MemoryDB.Tables tables = MemoryDB.get(request.getContractId());
+        Tables tables = memoryDB.get(request.getContractId());
         WxPayEntrustResult entrustResult = tables.getWxPayEntrustResult();
         WxSignStatusNotifyResult signStatusNotifyResult = tables.getWxSignStatusNotifyResult();
         WxTerminatedContractRequest terminatedContractRequest = tables.getWxTerminatedContractRequest();
@@ -278,7 +281,7 @@ public class PayController extends BaseController {
     public String deleteContract(@RequestBody String xml) {
         WxTerminatedContractRequest request = fromXml(xml, WxTerminatedContractRequest.class);
 
-        MemoryDB.Tables tables = MemoryDB.get(request.getContractId());
+        Tables tables = memoryDB.get(request.getContractId());
         if (tables.getWxPayEntrustResult() == null) {
             WxTerminationContractResult result = failResult(WxTerminationContractResult.class, "NO_ENTRUST_ORDER", "没有找到签约记录");
             return signAndToXml(result);
@@ -300,11 +303,10 @@ public class PayController extends BaseController {
         signResult.setOperateTime(DateUtils.format(LocalDateTime.now(), DateUtils.FMT_yyyyMMddHHmmss19));
         delayRequest(signResult, wechatPayProperties.getContractNotifyUrl(), 10, TimeUnit.SECONDS);
 
-        MemoryDB.put(request);
-        MemoryDB.put(signResult);
+        memoryDB.put(request);
+        memoryDB.put(signResult);
 
         return signAndToXml(result);
     }
-
 
 }
