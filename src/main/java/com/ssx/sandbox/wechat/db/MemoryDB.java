@@ -8,6 +8,10 @@ import com.github.binarywang.wxpay.bean.result.WxSignStatusNotifyResult;
 import com.github.binarywang.wxpay.bean.result.WxWithholdNotifyResult;
 import lombok.Data;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
@@ -72,7 +76,7 @@ public class MemoryDB {
     public static void put(WxWithholdNotifyResult table) {
         setting(table.getOutTradeNo(), table);
         keyMap.put(table.getTransactionId(), table.getOutTradeNo());
-        keyMap.put(table.getContractId(), table.getOutTradeNo());
+        // keyMap.put(table.getContractId(), table.getOutTradeNo());// 由于contractId相同，会覆盖原有数据，这里保存
     }
 
     public static void put(WxTerminatedContractRequest table) {
@@ -98,11 +102,26 @@ public class MemoryDB {
     public static Tables get(String... key) {
         Tables tables;
         for (String s : key) {
+            if (s == null) {
+                continue;
+            }
             tables = dataMap.get(s);
             if (tables != null) {
                 return tables;
             }
         }
+
+        String outTradeNo;
+        for (String s : key) {
+            if (s == null) {
+                continue;
+            }
+            outTradeNo = keyMap.get(s);
+            if (outTradeNo != null) {
+                return dataMap.get(outTradeNo);
+            }
+        }
+
         return EMPTY;
     }
 
@@ -119,7 +138,7 @@ public class MemoryDB {
         private WxWithholdNotifyResult wxWithholdNotifyResult;
         private WxTerminatedContractRequest wxTerminatedContractRequest;
 
-        private Map<Class<?>, LocalDateTime> timeMap = new HashMap<>();
+        private Map<String, LocalDateTime> timeMap = new HashMap<>();
 
         public void setting(Object obj) {
             if (obj instanceof WxPayUnifiedOrderRequest) {
@@ -146,11 +165,15 @@ public class MemoryDB {
                 return;
             }
 
-            timeMap.put(obj.getClass(), LocalDateTime.now());
+            timeMap.put(obj.getClass().getSimpleName(), LocalDateTime.now());
         }
 
         public LocalDateTime getTime(Class<?> clazz) {
-            return timeMap.get(clazz);
+            return timeMap.get(clazz.getSimpleName());
+        }
+
+        public LocalDateTime getTime(Object obj) {
+            return timeMap.get(obj.getClass().getSimpleName());
         }
     }
 }
