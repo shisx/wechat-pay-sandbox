@@ -300,6 +300,7 @@ public class PayController extends BaseController {
         signResult.setContractCode(tables.getWxPayEntrustResult().getContractCode());
         signResult.setOpenId(tables.getWxSignStatusNotifyResult().getOpenId());
         signResult.setChangeType("DELETE");
+        signResult.setContractTerminationMode(2);
         signResult.setOperateTime(DateUtils.format(LocalDateTime.now(), DateUtils.FMT_yyyyMMddHHmmss19));
         delayRequest(signResult, wechatPayProperties.getContractNotifyUrl(), 10, TimeUnit.SECONDS);
 

@@ -140,9 +140,12 @@ public class BaseController {
                     .url(url)
                     .post(RequestBody.create(MediaType.parse("application/xml"), xml))
                     .build();
-            try {
-                Response response = OK_HTTP_CLIENT.newCall(request).execute();
-                log.info("<---------- response: {}", response);
+            try (Response response = OK_HTTP_CLIENT.newCall(request).execute()) {
+                if (response.body() != null) {
+                    log.info("<---------- response: {}, body: {}", response, response.body().string());
+                } else {
+                    log.info("<---------- response: {}", response);
+                }
             } catch (IOException e) {
                 log.error("http request error", e);
             }
